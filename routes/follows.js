@@ -18,14 +18,15 @@ router.get("/", authenticateToken, async (req, res) => {
 });
 
 //respond follow request: deletes follow request and if accepted, creates a follow record
-router.post("/respond", authenticateToken, async (req, res) => {
+router.post("/respond/:id", authenticateToken, async (req, res) => {
   try {
+    const { id } = req.params;
     const userId = req.user.userId;
-    const { follower_id, accepted } = req.body;
+    const { accepted } = req.body;
 
     const query_delete =
       "DELETE FROM follow_requests WHERE follower_id = ? AND followed_id = ?;";
-    const [result_delete] = await db.query(query_delete, [follower_id, userId]);
+    const [result_delete] = await db.query(query_delete, [id, userId]);
     if (result_delete.affectedRows === 0) {
       return res.status(403).json({
         error: "This request does not exist",
@@ -35,7 +36,7 @@ router.post("/respond", authenticateToken, async (req, res) => {
     if (accepted) {
       const query_accept =
         "INSERT INTO follows (follower_id, followed_id) VALUES(?, ?);";
-      const [result] = await db.query(query_accept, [follower_id, userId]);
+      await db.query(query_accept, [id, userId]);
       res.status(201).json({ message: "Request accepted" });
     } else {
       res.status(201).json({ message: "Request declined" });
@@ -46,8 +47,16 @@ router.post("/respond", authenticateToken, async (req, res) => {
 });
 
 //POST follow request (ask to follow someone)
-router.post("/respond", authenticateToken, async (req, res) => {
-    
+router.post("/request/:id", authenticateToken, async (req, res) => {
+    try{
+        const { id } = req.params
+        const userId = req.user.userId
+        const query = "INSERT INTO follow_requests (follower_id, followed_id) VALUES (?, ?)"
+        const [result] = await db.query(query,[userId, id])
+        res.status(201).json({ message: "Request created succesfully" });
+    }catch(err){
+        res.status(500).json({ error: err.message });
+    }
 });
 
 module.exports = router;
