@@ -17,6 +17,18 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
+//GET follow_requests of the logged user
+router.get("/requests", authenticateToken, async(req, res) => {
+  try{
+    const userId = req.user.userId;
+    const query = "SELECT * FROM follow_requests WHERE followed_id = ? OR follower_id = ?;";
+    const [followRequests] = await db.query(query,[userId,userId]);
+    res.json(followRequests)
+  }catch (err){
+    res.status(500).json({ error: err.message });
+  }
+})
+
 //respond follow request: deletes follow request and if accepted, creates a follow record
 router.post("/respond/:id", authenticateToken, async (req, res) => {
   try {
@@ -30,6 +42,8 @@ router.post("/respond/:id", authenticateToken, async (req, res) => {
     if (result_delete.affectedRows === 0) {
       return res.status(403).json({
         error: "This request does not exist",
+        follower_id: id,
+        followed_id: userId,
       });
     }
 

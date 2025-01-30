@@ -12,7 +12,7 @@ router.get("/", authenticateToken, async (req, res) => {
 
     if (id) {
       const query = `
-    SELECT post_id, title, content, DATE(creation_time) AS creation_time FROM posts p
+    SELECT author_id, post_id, title, content, DATE(creation_time) AS creation_time FROM posts p
     INNER JOIN follows f on p.author_id = f.followed_id
     WHERE f.follower_id = ? AND f.followed_id = ?
       `;
@@ -24,14 +24,34 @@ router.get("/", authenticateToken, async (req, res) => {
       } else {
         res
           .status(403)
-          .json({ error: "You are not authorize to see these posts" });
+          .json({ error: "You are not authorized to see these posts or user does not have any" });
       }
     } else {
       const query =
-        "SELECT post_id, title, content, DATE(creation_time) AS creation_time FROM posts WHERE author_id = ?";
+        "SELECT author_id, post_id, title, content, DATE(creation_time) AS creation_time FROM posts WHERE author_id = ?";
       const queryParams = [req.user.userId];
       const [posts] = await db.query(query, queryParams);
       res.json(posts);
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET post (if owned by logged user)
+router.get("/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    const query = "SELECT * from posts WHERE author_id = ? AND post_id = ?;";
+    const queryParams = [userId, id];
+    const [post] = await db.query(query, queryParams);
+    if (post.length > 0) {
+      res.json(post[0]);
+    } else {
+      res
+        .status(403)
+        .json({ error: "You are not authorized to see this post" });
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
